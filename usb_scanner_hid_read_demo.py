@@ -133,11 +133,24 @@ if dev is None:
     raise ValueError('USB device not found')
 
 # Disconnect it from kernel
-needs_reattach = False
-if dev.is_kernel_driver_active(0):
-    needs_reattach = True
-    dev.detach_kernel_driver(0)
-    print "Detached USB device from kernel driver"
+needs_reattach = []
+c = 1
+for config in dev:
+    #print 'config', c
+    #print 'Interfaces', config.bNumInterfaces
+    for i in range(config.bNumInterfaces):
+        if dev.is_kernel_driver_active(i):
+            needs_reattach.append(i)
+            dev.detach_kernel_driver(i)
+            print "Interface:", i, "Detached USB device from kernel driver"
+    c+=1
+
+# Disconnect it from kernel
+#needs_reattach = False
+#if dev.is_kernel_driver_active(0):
+#    needs_reattach = True
+#    dev.detach_kernel_driver(0)
+#    print "Detached USB device from kernel driver"
 
 # set the active configuration. With no arguments, the first
 # configuration will be the active one
@@ -163,14 +176,14 @@ line = ''
 while True:
     try:
         # Wait up to 0.5 seconds for data. 500 = 0.5 second timeout.
-        data = ep.read(1000, 500)  
+        data = ep.read(1000, 500)
         ch = hid2ascii(data)
         line += ch
     except KeyboardInterrupt:
         print "Stopping program"
         dev.reset()
-        if needs_reattach:
-            dev.attach_kernel_driver(0)
+        for i in needs_reattach:
+            dev.attach_kernel_driver(i)
             print "Reattached USB device to kernel driver"
         break
     except usb.core.USBError:
